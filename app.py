@@ -1,142 +1,129 @@
 import streamlit as st
 import requests
 
-# --- Page Config ---
-st.set_page_config(page_title="Weather App", page_icon="cloud", layout="centered")
+# ---------------------------------------------------------------------------
+# Page config
+# ---------------------------------------------------------------------------
+st.set_page_config(page_title="Weather & Health", page_icon="cloud", layout="centered")
 
-# --- Styling ---
+# ---------------------------------------------------------------------------
+# Styling
+# ---------------------------------------------------------------------------
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&family=Inter:wght@300;400;500&display=swap');
 
-    html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
-
-    .block-container { max-width: 680px; padding-top: 2.5rem; }
+    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+    .block-container { max-width: 700px; padding-top: 2.5rem; }
 
     h1 {
-        font-family: 'DM Mono', monospace !important;
-        font-size: 1.5rem !important;
-        color: #1a1a2e !important;
-        letter-spacing: -0.01em;
+        font-family: 'Syne', sans-serif !important;
+        font-size: 2rem !important;
+        color: #0a0a0a !important;
+        letter-spacing: -0.03em;
+        line-height: 1.1 !important;
     }
 
-    .card {
-        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
-        border-radius: 16px;
+    .w-card {
+        background: #0a0a0a;
+        border-radius: 20px;
         padding: 2rem 2.5rem 2.5rem;
         margin-top: 1.5rem;
-        color: white;
+        position: relative;
+        overflow: hidden;
     }
-
-    .card-city {
-        font-family: 'DM Mono', monospace;
-        font-size: 1.6rem;
-        font-weight: 500;
-        color: #e2e8f0;
-        margin-bottom: 0.15rem;
+    .w-card::before {
+        content: '';
+        position: absolute;
+        top: -60px; right: -60px;
+        width: 220px; height: 220px;
+        background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%);
+        border-radius: 50%;
     }
-
-    .card-condition {
-        font-size: 0.95rem;
-        color: #94a3b8;
-        text-transform: capitalize;
-        margin-bottom: 1.8rem;
-    }
-
-    .card-temp {
-        font-family: 'DM Mono', monospace;
-        font-size: 4rem;
-        font-weight: 500;
+    .w-location {
+        font-family: 'Syne', sans-serif;
+        font-size: 1.4rem;
+        font-weight: 600;
         color: #f1f5f9;
+        margin-bottom: 0.1rem;
+    }
+    .w-sub { font-size: 0.85rem; color: #475569; margin-bottom: 1.8rem; }
+    .w-temp {
+        font-family: 'Syne', sans-serif;
+        font-size: 4.5rem;
+        font-weight: 700;
+        color: #f8fafc;
         line-height: 1;
-        margin-bottom: 2rem;
+        margin-bottom: 0.4rem;
     }
-
-    .card-temp sup {
-        font-size: 1.8rem;
-        vertical-align: super;
-        color: #94a3b8;
-    }
-
-    .stats-row {
-        display: flex;
-        gap: 1rem;
-    }
-
+    .w-condition { font-size: 1rem; color: #94a3b8; margin-bottom: 2rem; text-transform: capitalize; }
+    .stats { display: flex; gap: 0.75rem; }
     .stat {
         flex: 1;
-        background: rgba(255,255,255,0.07);
-        border: 1px solid rgba(255,255,255,0.1);
-        border-radius: 10px;
-        padding: 0.85rem 1rem;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 12px;
+        padding: 0.8rem 1rem;
         text-align: center;
     }
+    .stat-label { font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: #475569; margin-bottom: 0.3rem; }
+    .stat-value { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 600; color: #e2e8f0; }
 
-    .stat-label {
-        font-size: 0.65rem;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: #64748b;
-        margin-bottom: 0.3rem;
-    }
+    .h-card { border-radius: 16px; padding: 1.4rem 1.75rem; margin-top: 1.2rem; border-left: 4px solid; }
+    .h-card.hot  { background: #fff7ed; border-color: #f97316; }
+    .h-card.cold { background: #eff6ff; border-color: #3b82f6; }
+    .h-card.rain { background: #f0f9ff; border-color: #0ea5e9; }
+    .h-card.wind { background: #f5f3ff; border-color: #8b5cf6; }
+    .h-card.mild { background: #f0fdf4; border-color: #22c55e; }
 
-    .stat-value {
-        font-family: 'DM Mono', monospace;
-        font-size: 1.05rem;
-        color: #e2e8f0;
-    }
+    .h-title { font-family: 'Syne', sans-serif; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.6rem; }
+    .h-card.hot  .h-title { color: #c2410c; }
+    .h-card.cold .h-title { color: #1d4ed8; }
+    .h-card.rain .h-title { color: #0369a1; }
+    .h-card.wind .h-title { color: #6d28d9; }
+    .h-card.mild .h-title { color: #15803d; }
 
-    .error-box {
-        background: #fff1f2;
-        border: 1px solid #fecdd3;
-        border-radius: 10px;
-        padding: 0.9rem 1.1rem;
-        color: #be123c;
-        font-size: 0.9rem;
-        margin-top: 1rem;
-    }
+    .h-advice { font-size: 0.9rem; color: #374151; line-height: 1.6; }
+    .h-advice li { margin-bottom: 0.25rem; }
+
+    .err { background: #fff1f2; border: 1px solid #fecdd3; border-radius: 12px; padding: 0.9rem 1.1rem; color: #be123c; font-size: 0.9rem; margin-top: 1rem; }
 
     div[data-testid="stTextInput"] input {
-        border-radius: 10px !important;
+        border-radius: 12px !important;
         border: 1.5px solid #e2e8f0 !important;
-        font-family: 'DM Mono', monospace !important;
-        font-size: 0.95rem !important;
-        padding: 0.6rem 0.9rem !important;
         background: #f8fafc !important;
-        color: #1a1a2e !important;
+        font-family: 'Inter', sans-serif !important;
+        font-size: 0.95rem !important;
+        color: #0a0a0a !important;
+        padding: 0.65rem 1rem !important;
     }
-
     div[data-testid="stTextInput"] input:focus {
-        border-color: #0f3460 !important;
-        box-shadow: 0 0 0 3px rgba(15, 52, 96, 0.1) !important;
+        border-color: #0a0a0a !important;
+        box-shadow: 0 0 0 3px rgba(10,10,10,0.08) !important;
     }
-
     div[data-testid="stButton"] button {
-        background: #0f3460 !important;
-        color: white !important;
+        background: #0a0a0a !important;
+        color: #f8fafc !important;
         border: none !important;
-        border-radius: 10px !important;
-        font-family: 'DM Mono', monospace !important;
+        border-radius: 12px !important;
+        font-family: 'Syne', sans-serif !important;
         font-size: 0.85rem !important;
-        letter-spacing: 0.04em;
-        padding: 0.55rem 1.4rem !important;
-        transition: opacity 0.2s;
+        font-weight: 600 !important;
+        letter-spacing: 0.05em;
+        padding: 0.6rem 1.5rem !important;
         width: 100%;
+        transition: opacity 0.2s;
     }
-
-    div[data-testid="stButton"] button:hover { opacity: 0.85 !important; }
-
-    .footer {
-        text-align: center;
-        color: #94a3b8;
-        font-size: 0.75rem;
-        margin-top: 2.5rem;
-    }
+    div[data-testid="stButton"] button:hover { opacity: 0.8 !important; }
+    .footer { text-align: center; color: #94a3b8; font-size: 0.72rem; margin-top: 2.5rem; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- WMO Weather Code Mapping ---
-WMO_CODES = {
+
+# ---------------------------------------------------------------------------
+# WMO code helpers
+# ---------------------------------------------------------------------------
+WMO_LABEL = {
     0: "Clear sky",
     1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
     45: "Fog", 48: "Icy fog",
@@ -144,108 +131,181 @@ WMO_CODES = {
     56: "Freezing drizzle", 57: "Heavy freezing drizzle",
     61: "Slight rain", 63: "Moderate rain", 65: "Heavy rain",
     66: "Freezing rain", 67: "Heavy freezing rain",
-    71: "Slight snow", 73: "Moderate snow", 75: "Heavy snow",
-    77: "Snow grains",
+    71: "Slight snow", 73: "Moderate snow", 75: "Heavy snow", 77: "Snow grains",
     80: "Slight showers", 81: "Moderate showers", 82: "Violent showers",
     85: "Slight snow showers", 86: "Heavy snow showers",
     95: "Thunderstorm", 96: "Thunderstorm with hail", 99: "Thunderstorm with heavy hail",
 }
 
-WMO_ICONS = {
+WMO_ICON = {
     0: "☀️", 1: "🌤️", 2: "⛅", 3: "☁️",
     45: "🌫️", 48: "🌫️",
-    51: "🌦️", 53: "🌦️", 55: "🌧️",
-    56: "🌨️", 57: "🌨️",
-    61: "🌧️", 63: "🌧️", 65: "🌧️",
-    66: "🌨️", 67: "🌨️",
+    51: "🌦️", 53: "🌦️", 55: "🌧️", 56: "🌨️", 57: "🌨️",
+    61: "🌧️", 63: "🌧️", 65: "🌧️", 66: "🌨️", 67: "🌨️",
     71: "❄️", 73: "❄️", 75: "❄️", 77: "🌨️",
-    80: "🌦️", 81: "🌧️", 82: "⛈️",
-    85: "🌨️", 86: "🌨️",
+    80: "🌦️", 81: "🌧️", 82: "⛈️", 85: "🌨️", 86: "🌨️",
     95: "⛈️", 96: "⛈️", 99: "⛈️",
 }
 
+RAIN_CODES = {51,53,55,56,57,61,63,65,66,67,80,81,82,85,86,95,96,99}
+SNOW_CODES = {71,73,75,77}
 
-def geocode_city(city: str):
-    url = "https://geocoding-api.open-meteo.com/v1/search"
-    resp = requests.get(url, params={"name": city, "count": 1, "language": "en", "format": "json"}, timeout=10)
-    resp.raise_for_status()
-    results = resp.json().get("results")
+def weather_category(code: int, temp: float, wind: float) -> str:
+    if code in RAIN_CODES:
+        return "rain"
+    if code in SNOW_CODES or temp <= 5:
+        return "cold"
+    if wind >= 40:
+        return "wind"
+    if temp >= 28:
+        return "hot"
+    if temp <= 12:
+        return "cold"
+    return "mild"
+
+HEALTH_ADVICE = {
+    "hot": {
+        "css": "hot", "title": "Hot Weather Advisory", "icon": "🌡️",
+        "tips": [
+            "Drink at least 2-3 litres of water throughout the day.",
+            "Wear light-coloured, loose-fitting, breathable clothing.",
+            "Avoid direct sun exposure between 11 am and 3 pm.",
+            "Apply sunscreen (SPF 30+) and wear a wide-brimmed hat.",
+            "Seek shade or air-conditioned spaces if you feel dizzy or overheated.",
+        ],
+    },
+    "cold": {
+        "css": "cold", "title": "Cold Weather Advisory", "icon": "🧥",
+        "tips": [
+            "Wear multiple layers — thermal base, insulating mid-layer, windproof outer layer.",
+            "Cover extremities: gloves, warm socks, a hat, and a scarf.",
+            "Drink warm fluids such as herbal tea, soup, or warm water.",
+            "Limit prolonged time outdoors; warm up gradually when returning inside.",
+            "Watch for signs of hypothermia: persistent shivering, confusion, or numbness.",
+        ],
+    },
+    "rain": {
+        "css": "rain", "title": "Rainy Weather Advisory", "icon": "☂️",
+        "tips": [
+            "Carry an umbrella or a waterproof rain jacket before heading out.",
+            "Wear waterproof footwear to keep your feet dry.",
+            "Change into dry clothes as soon as possible if you get wet.",
+            "Be cautious on slippery surfaces — slow down when walking or driving.",
+            "Stay indoors during thunder or lightning storms.",
+        ],
+    },
+    "wind": {
+        "css": "wind", "title": "Windy Weather Advisory", "icon": "💨",
+        "tips": [
+            "Wear wraparound sunglasses or goggles to protect your eyes from dust.",
+            "Choose close-fitting clothing so fabric does not catch the wind.",
+            "Secure loose outdoor items that could become airborne hazards.",
+            "Exercise extra caution when cycling or driving high-sided vehicles.",
+            "People with respiratory conditions should limit outdoor exposure.",
+        ],
+    },
+    "mild": {
+        "css": "mild", "title": "Conditions Look Good", "icon": "✅",
+        "tips": [
+            "Comfortable conditions — a great time for outdoor activities.",
+            "Stay hydrated even in mild weather, especially if exercising.",
+            "Wear a light layer in the evening as temperatures may drop.",
+            "Enjoy the outdoors and make the most of the pleasant weather.",
+        ],
+    },
+}
+
+
+# ---------------------------------------------------------------------------
+# API helpers
+# ---------------------------------------------------------------------------
+def geocode(city: str):
+    r = requests.get(
+        "https://geocoding-api.open-meteo.com/v1/search",
+        params={"name": city, "count": 1, "language": "en", "format": "json"},
+        timeout=10,
+    )
+    r.raise_for_status()
+    results = r.json().get("results")
     if not results:
         return None
-    r = results[0]
+    d = results[0]
     return {
-        "name": r.get("name"),
-        "country": r.get("country", ""),
-        "admin1": r.get("admin1", ""),
-        "lat": r["latitude"],
-        "lon": r["longitude"],
+        "name":    d.get("name", city),
+        "country": d.get("country", ""),
+        "admin1":  d.get("admin1", ""),
+        "lat":     d["latitude"],
+        "lon":     d["longitude"],
     }
-
 
 def fetch_weather(lat: float, lon: float):
-    url = "https://api.open-meteo.com/v1/forecast"
-    params = {
-        "latitude": lat,
-        "longitude": lon,
-        "current": "temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m",
-        "wind_speed_unit": "kmh",
-        "timezone": "auto",
-    }
-    resp = requests.get(url, params=params, timeout=10)
-    resp.raise_for_status()
-    return resp.json()["current"]
+    r = requests.get(
+        "https://api.open-meteo.com/v1/forecast",
+        params={
+            "latitude":  lat,
+            "longitude": lon,
+            "current":   "temperature_2m,apparent_temperature,relative_humidity_2m,"
+                         "weather_code,wind_speed_10m,wind_direction_10m",
+            "wind_speed_unit": "kmh",
+            "timezone":  "auto",
+        },
+        timeout=10,
+    )
+    r.raise_for_status()
+    return r.json()["current"]
+
+def wind_compass(deg: float) -> str:
+    return ["N","NE","E","SE","S","SW","W","NW"][round(deg / 45) % 8]
 
 
-def wind_dir_label(deg: float) -> str:
-    dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
-    return dirs[round(deg / 45) % 8]
-
-
-# --- UI ---
-st.title("WEATHER")
+# ---------------------------------------------------------------------------
+# UI
+# ---------------------------------------------------------------------------
+st.title("Weather & Health Advisor")
 st.markdown(
-    "<p style='color:#64748b; font-size:0.9rem; margin-top:-0.6rem; margin-bottom:1.5rem;'>"
-    "No API key required — powered by Open-Meteo</p>",
+    "<p style='color:#64748b;font-size:0.9rem;margin-top:-0.6rem;margin-bottom:1.8rem;'>"
+    "Enter any city to get current conditions and personalised health tips.</p>",
     unsafe_allow_html=True,
 )
 
 col_in, col_btn = st.columns([4, 1])
 with col_in:
-    city_input = st.text_input("city", placeholder="Enter a city name...", label_visibility="collapsed")
+    city_input = st.text_input("city", placeholder="e.g. Kumasi, London, Tokyo ...", label_visibility="collapsed")
 with col_btn:
     search = st.button("Search")
 
 if search:
     if not city_input.strip():
-        st.markdown("<div class='error-box'>Please enter a city name.</div>", unsafe_allow_html=True)
+        st.markdown("<div class='err'>Please enter a city name before searching.</div>", unsafe_allow_html=True)
     else:
-        with st.spinner("Looking up weather..."):
+        with st.spinner("Fetching weather data..."):
             try:
-                location = geocode_city(city_input.strip())
+                location = geocode(city_input.strip())
                 if location is None:
                     st.markdown(
-                        f"<div class='error-box'>City not found: <strong>{city_input}</strong>. "
-                        "Check the spelling or try a nearby city.</div>",
+                        f"<div class='err'>City not found: <strong>{city_input}</strong>. "
+                        "Check the spelling or try a nearby major city.</div>",
                         unsafe_allow_html=True,
                     )
                 else:
-                    weather = fetch_weather(location["lat"], location["lon"])
-                    code = weather.get("weather_code", 0)
-                    condition = WMO_CODES.get(code, "Unknown")
-                    icon = WMO_ICONS.get(code, "🌡️")
-                    temp = weather["temperature_2m"]
-                    feels = weather["apparent_temperature"]
-                    humidity = weather["relative_humidity_2m"]
-                    wind_speed = weather["wind_speed_10m"]
-                    wind_deg = weather.get("wind_direction_10m", 0)
-                    region = f"{location['admin1']}, " if location['admin1'] else ""
+                    w         = fetch_weather(location["lat"], location["lon"])
+                    code      = w.get("weather_code", 0)
+                    temp      = w["temperature_2m"]
+                    feels     = w["apparent_temperature"]
+                    humidity  = w["relative_humidity_2m"]
+                    wind_spd  = w["wind_speed_10m"]
+                    wind_deg  = w.get("wind_direction_10m", 0)
+                    condition = WMO_LABEL.get(code, "Unknown")
+                    icon      = WMO_ICON.get(code, "🌡️")
+                    region    = f"{location['admin1']}, " if location["admin1"] else ""
 
                     st.markdown(f"""
-                    <div class="card">
-                        <div class="card-city">{icon} {location['name']}</div>
-                        <div class="card-condition">{region}{location['country']} &nbsp;·&nbsp; {condition}</div>
-                        <div class="card-temp">{temp}<sup>°C</sup></div>
-                        <div class="stats-row">
+                    <div class="w-card">
+                        <div class="w-location">{icon} {location['name']}</div>
+                        <div class="w-sub">{region}{location['country']}</div>
+                        <div class="w-temp">{temp}°C</div>
+                        <div class="w-condition">{condition}</div>
+                        <div class="stats">
                             <div class="stat">
                                 <div class="stat-label">Feels Like</div>
                                 <div class="stat-value">{feels}°C</div>
@@ -256,17 +316,30 @@ if search:
                             </div>
                             <div class="stat">
                                 <div class="stat-label">Wind</div>
-                                <div class="stat-value">{wind_speed} km/h {wind_dir_label(wind_deg)}</div>
+                                <div class="stat-value">{wind_spd} km/h {wind_compass(wind_deg)}</div>
                             </div>
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
 
-            except requests.exceptions.ConnectionError:
-                st.markdown("<div class='error-box'>Connection failed. Check your internet connection.</div>", unsafe_allow_html=True)
-            except requests.exceptions.Timeout:
-                st.markdown("<div class='error-box'>Request timed out. Please try again.</div>", unsafe_allow_html=True)
-            except requests.exceptions.HTTPError as e:
-                st.markdown(f"<div class='error-box'>API error: {e}</div>", unsafe_allow_html=True)
+                    cat    = weather_category(code, temp, wind_spd)
+                    advice = HEALTH_ADVICE[cat]
+                    tips_html = "".join(f"<li>{t}</li>" for t in advice["tips"])
+                    st.markdown(f"""
+                    <div class="h-card {advice['css']}">
+                        <div class="h-title">{advice['icon']} {advice['title']}</div>
+                        <ul class="h-advice">{tips_html}</ul>
+                    </div>
+                    """, unsafe_allow_html=True)
 
-st.markdown("<div class='footer'>Data from Open-Meteo &amp; Open-Meteo Geocoding API — free and open source</div>", unsafe_allow_html=True)
+            except requests.exceptions.ConnectionError:
+                st.markdown("<div class='err'>Connection failed. Check your internet connection and try again.</div>", unsafe_allow_html=True)
+            except requests.exceptions.Timeout:
+                st.markdown("<div class='err'>The request timed out. Please try again in a moment.</div>", unsafe_allow_html=True)
+            except requests.exceptions.HTTPError as e:
+                st.markdown(f"<div class='err'>API error: {e}</div>", unsafe_allow_html=True)
+
+st.markdown(
+    "<div class='footer'>Powered by Open-Meteo — free, open-source weather API, no key required</div>",
+    unsafe_allow_html=True,
+)
