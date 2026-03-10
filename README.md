@@ -2,6 +2,7 @@
 
 A lightweight Streamlit web app that fetches real-time weather data for any city and provides personalised health tips based on current conditions. No API key required.
 
+**Try app:** [**Weather Health Advisor**](https://weather-health-advisor-m6yzzwbwmmmcofzbawwhqe.streamlit.app/)
 ---
 
 ## Features
